@@ -18,6 +18,12 @@
     },
     "platforms": [
       "android"
-    ]
+    ],
+    "owner": "tvinhthanh",
+    "extra": {
+      "eas": {
+        "projectId": "5350b19a-6776-46bd-9be8-61d23494226e"
+      }
+    }
   }
 }
