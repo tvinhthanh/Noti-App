@@ -29,12 +29,17 @@ object Store {
     prefs(ctx).edit().putBoolean(KEY_AUTOSTART_ACK, value).apply()
   }
 
-  @Synchronized
+  /** Set while the UI is open; called after each new log entry so the screen updates at once. */
+  @Volatile var onLogAdded: (() -> Unit)? = null
+
   fun addLog(ctx: Context, entry: JSONObject) {
-    val old = logs(ctx)
-    val out = JSONArray().put(entry)
-    for (i in 0 until minOf(old.length(), MAX_LOGS - 1)) out.put(old.get(i))
-    prefs(ctx).edit().putString(KEY_LOGS, out.toString()).apply()
+    synchronized(this) {
+      val old = logs(ctx)
+      val out = JSONArray().put(entry)
+      for (i in 0 until minOf(old.length(), MAX_LOGS - 1)) out.put(old.get(i))
+      prefs(ctx).edit().putString(KEY_LOGS, out.toString()).apply()
+    }
+    try { onLogAdded?.invoke() } catch (e: Exception) { }
   }
 
   fun logs(ctx: Context): JSONArray =

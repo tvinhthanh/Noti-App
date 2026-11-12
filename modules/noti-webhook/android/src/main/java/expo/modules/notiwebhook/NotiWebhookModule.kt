@@ -60,6 +60,17 @@ class NotiWebhookModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("NotiWebhook")
 
+    // Pushes "a new log entry exists" to JS instead of the UI polling for it.
+    Events("onLog")
+
+    OnStartObserving("onLog") {
+      Store.onLogAdded = { sendEvent("onLog", mapOf<String, Any?>()) }
+    }
+
+    OnStopObserving("onLog") {
+      Store.onLogAdded = null
+    }
+
     AsyncFunction("getStatus") {
       val c = ctx
       val granted = NotificationManagerCompat.getEnabledListenerPackages(c).contains(c.packageName)

@@ -14,7 +14,7 @@ import java.security.MessageDigest
  * - Other notifications: one event, `eventId` = sha1 of app + text fields; the same id within
  *   CONTENT_TTL_MS is dropped (progress ticks, silent updates, group summaries repeating a child).
  *
- * Called only from WebhookSender's single thread, but synchronized anyway.
+ * Called from WebhookSender's worker pool; synchronized so concurrent posts can't both claim an id.
  */
 object Dedupe {
   private const val PREFS = "noti_webhook_seen"

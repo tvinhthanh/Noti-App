@@ -1,4 +1,4 @@
-import {requireNativeModule} from 'expo';
+import {NativeModule, requireNativeModule} from 'expo';
 
 export type Status = {
   url: string;
@@ -33,7 +33,14 @@ type NativeApi = {
   clearLogs(): void;
 };
 
-const native = requireNativeModule<NativeApi>('NotiWebhook');
+type Events = {
+  onLog: () => void;
+};
+
+declare class NotiWebhookNative extends NativeModule<Events> {}
+interface NotiWebhookNative extends NativeApi {}
+
+const native = requireNativeModule<NotiWebhookNative>('NotiWebhook');
 
 export const NotiWebhook = {
   getStatus: () => native.getStatus(),
@@ -45,6 +52,8 @@ export const NotiWebhook = {
   setAutostartAck: (value: boolean) => native.setAutostartAck(value),
   sendTest: () => native.sendTest(),
   clearLogs: () => native.clearLogs(),
+  /** Fires right after each send attempt is recorded. Returns an unsubscribe handle. */
+  onLog: (listener: () => void) => native.addListener('onLog', listener),
   async getLogs(): Promise<LogEntry[]> {
     try {
       return JSON.parse(await native.getLogs()) as LogEntry[];

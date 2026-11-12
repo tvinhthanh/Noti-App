@@ -80,9 +80,15 @@ export default function App() {
     const sub = AppState.addEventListener('change', st => {
       if (st === 'active') refresh();
     });
-    const timer = setInterval(() => refresh(), 3000);
+    // New sends are pushed from native, so history updates immediately.
+    const logSub = NotiWebhook.onLog(() => {
+      NotiWebhook.getLogs().then(setLogs);
+    });
+    // Slow poll only for status (permission, listener state) that has no event.
+    const timer = setInterval(() => refresh(), 10000);
     return () => {
       sub.remove();
+      logSub.remove();
       clearInterval(timer);
     };
   }, [refresh]);
@@ -199,6 +205,15 @@ export default function App() {
                   </View>
                 </View>
               )}
+
+            {status && !status.url && (
+              <View style={styles.warn}>
+                <Text style={styles.warnText}>
+                  Chưa nhập Webhook URL nên thông báo đang bị bỏ qua. Dán URL vào ô
+                  dưới rồi bấm Lưu.
+                </Text>
+              </View>
+            )}
 
             <Text style={styles.label}>Webhook URL</Text>
             <TextInput

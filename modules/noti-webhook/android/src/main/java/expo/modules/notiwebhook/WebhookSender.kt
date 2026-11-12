@@ -11,7 +11,8 @@ import java.util.concurrent.Executors
 object WebhookSender {
   private const val TAG = "NotiWebhook"
   private const val MAX_ATTEMPTS = 3
-  private val executor = Executors.newSingleThreadExecutor()
+  // Several workers so one slow or failing request (retries + timeouts) doesn't hold up the rest.
+  private val executor = Executors.newFixedThreadPool(4)
 
   /** Fire-and-forget, for the notification listener. */
   fun send(ctx: Context, payload: JSONObject) {
@@ -28,8 +29,21 @@ object WebhookSender {
   /** Blocking send; returns (ok, result). Call off the main thread. */
   fun deliver(ctx: Context, payload: JSONObject): Pair<Boolean, String> {
     val url = Store.url(ctx)
-    if (url.isBlank()) return false to "Chưa cấu hình webhook URL"
+    val (ok, result) =
+        if (url.isBlank()) false to "Chưa nhập webhook URL, thông báo bị bỏ qua"
+        else postWithRetry(url, payload)
+    // Logged even when skipped, so an empty history never hides a missing URL.
+    Store.addLog(ctx, JSONObject()
+        .put("time", System.currentTimeMillis())
+        .put("app", payload.optString("appName", payload.optString("packageName")))
+        .put("title", payload.optString("title"))
+        .put("text", payload.optString("text"))
+        .put("ok", ok)
+        .put("result", result))
+    return ok to result
+  }
 
+  private fun postWithRetry(url: String, payload: JSONObject): Pair<Boolean, String> {
     var ok = false
     var result = ""
     for (attempt in 1..MAX_ATTEMPTS) {
@@ -45,13 +59,6 @@ object WebhookSender {
       }
       if (attempt < MAX_ATTEMPTS) Thread.sleep(1000L * attempt * attempt)
     }
-    Store.addLog(ctx, JSONObject()
-        .put("time", System.currentTimeMillis())
-        .put("app", payload.optString("appName", payload.optString("packageName")))
-        .put("title", payload.optString("title"))
-        .put("text", payload.optString("text"))
-        .put("ok", ok)
-        .put("result", result))
     return ok to result
   }
 
