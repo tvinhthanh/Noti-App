@@ -109,7 +109,14 @@ export default function App() {
         contentContainerStyle={styles.content}
         ListHeaderComponent={
           <View>
-            <Text style={styles.h1}>Noti → Webhook</Text>
+            <View style={styles.header}>
+              <Text style={styles.h1}>Noti → Webhook</Text>
+              {status && (
+                <Text style={styles.version}>
+                  v{status.appVersion} · build {status.appVersionCode}
+                </Text>
+              )}
+            </View>
 
             {status && !status.permissionGranted && (
               <View style={styles.warn}>
@@ -228,13 +235,6 @@ export default function App() {
         ListEmptyComponent={
           <Text style={styles.empty}>Chưa có thông báo nào được gửi.</Text>
         }
-        ListFooterComponent={
-          status ? (
-            <Text style={styles.footer}>
-              Noti Webhook v{status.appVersion} · build {status.appVersionCode}
-            </Text>
-          ) : undefined
-        }
         renderItem={({item}) => (
           <View style={styles.log}>
             <View style={[styles.dot, {backgroundColor: item.ok ? '#2f9e44' : '#e03131'}]} />
@@ -265,7 +265,7 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {flex: 1, backgroundColor: '#f4f4f2'},
   content: {padding: 16, paddingBottom: 40},
-  h1: {fontSize: 26, fontWeight: '700', color: '#1c1c1a', marginBottom: 16},
+  h1: {fontSize: 26, fontWeight: '700', color: '#1c1c1a'},
   h2: {fontSize: 17, fontWeight: '700', color: '#1c1c1a'},
   label: {fontSize: 13, color: '#5c5c57', marginBottom: 6},
   input: {
@@ -327,10 +327,11 @@ const styles = StyleSheet.create({
   logTitle: {fontSize: 14, color: '#1c1c1a', marginTop: 2},
   logText: {fontSize: 13, color: '#5c5c57', marginTop: 1},
   logMeta: {fontSize: 12, color: '#8a8a84', fontWeight: '400', marginTop: 2},
-  footer: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#8a8a84',
-    marginTop: 24,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 16,
   },
+  version: {fontSize: 12, color: '#8a8a84'},
 });
