@@ -98,6 +98,8 @@ object NotiSerializer {
       // Device
       put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
       put("androidVersion", Build.VERSION.RELEASE)
+      put("appVersion", AppInfo.versionName(ctx))
+      put("appVersionCode", AppInfo.versionCode(ctx))
     }
   }
 

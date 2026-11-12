@@ -8,6 +8,8 @@ export type Status = {
   isXiaomi: boolean;
   autostartAck: boolean;
   listenerConnected: boolean;
+  appVersion: string;
+  appVersionCode: number;
 };
 
 export type LogEntry = {

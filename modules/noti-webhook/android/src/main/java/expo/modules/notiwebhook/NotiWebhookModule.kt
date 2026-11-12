@@ -75,6 +75,8 @@ class NotiWebhookModule : Module() {
           },
           "listenerConnected" to NotiListener.connected,
           "autostartAck" to Store.autostartAck(c),
+          "appVersion" to AppInfo.versionName(c),
+          "appVersionCode" to AppInfo.versionCode(c),
       )
     }
 
@@ -134,6 +136,8 @@ class NotiWebhookModule : Module() {
           .put("key", "test")
           .put("isOngoing", false)
           .put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
+          .put("appVersion", AppInfo.versionName(ctx))
+          .put("appVersionCode", AppInfo.versionCode(ctx))
       val (ok, result) = WebhookSender.deliver(ctx, payload)
       mapOf("ok" to ok, "result" to result)
     }
