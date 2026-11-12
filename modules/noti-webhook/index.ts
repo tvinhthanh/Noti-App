@@ -5,6 +5,9 @@ export type Status = {
   enabled: boolean;
   permissionGranted: boolean;
   batteryUnrestricted: boolean;
+  isXiaomi: boolean;
+  autostartAck: boolean;
+  listenerConnected: boolean;
 };
 
 export type LogEntry = {
@@ -21,6 +24,8 @@ type NativeApi = {
   saveConfig(url: string, enabled: boolean): Promise<boolean>;
   openPermissionSettings(): void;
   requestIgnoreBatteryOptimization(): void;
+  openAutostartSettings(): void;
+  setAutostartAck(value: boolean): void;
   sendTest(): Promise<{ok: boolean; result: string}>;
   getLogs(): Promise<string>;
   clearLogs(): void;
@@ -34,6 +39,8 @@ export const NotiWebhook = {
   openPermissionSettings: () => native.openPermissionSettings(),
   requestIgnoreBatteryOptimization: () =>
     native.requestIgnoreBatteryOptimization(),
+  openAutostartSettings: () => native.openAutostartSettings(),
+  setAutostartAck: (value: boolean) => native.setAutostartAck(value),
   sendTest: () => native.sendTest(),
   clearLogs: () => native.clearLogs(),
   async getLogs(): Promise<LogEntry[]> {

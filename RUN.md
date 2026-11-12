@@ -4,6 +4,12 @@ App Android chuyển **mọi thông báo mới** trên điện thoại thành re
 
 > App có code native (Kotlin) nên **không chạy được bằng Expo Go**. Phải build ra file APK rồi cài vào máy.
 
+## Tải APK mới nhất
+
+https://expo.dev/artifacts/eas/G_VXfQAu7k7BqPoE4Ea9-lVfT_eX-IDlCtQZJ-EumW8.apk (build `acb431e2`, 12/11/2026)
+
+Mở link trên điện thoại để tải rồi cài (bản `preview`, cài đè lên bản cũ được, giữ nguyên cấu hình). Muốn build bản mới thì xem mục 2.
+
 ---
 
 ## 1. Chuẩn bị (làm 1 lần)
@@ -56,7 +62,8 @@ eas build -p android --profile preview
 
 - Nếu được hỏi *"Generate a new Android Keystore?"* → chọn **Yes**.
 - Build chạy trên cloud của Expo, mất khoảng 10–20 phút. Gói miễn phí có thể phải xếp hàng.
-- Build xong, terminal in ra **link tải APK** kèm mã QR. Anh cũng xem được ở expo.dev → project `noti-webhook` → Builds.
+- Build xong, terminal in ra **link tải APK** kèm mã QR. Anh cũng xem được ở expo.dev → project `noti-app` → Builds.
+- **EAS chỉ đóng gói code đã commit vào git.** Nếu muốn build cả thay đổi chưa commit thì chạy `$env:EAS_NO_VCS="1"` trước lệnh build.
 
 Profile `preview` ra file `.apk` để cài trực tiếp. Profile `production` ra `.aab` để đưa lên Google Play.
 
@@ -73,8 +80,8 @@ Profile `preview` ra file `.apk` để cài trực tiếp. Profile `production` 
 
 ### Riêng máy Xiaomi / Oppo / Vivo / Realme / Huawei
 
-Mấy hãng này kill app chạy nền rất mạnh, nên cần làm thêm:
-- Cài đặt → Ứng dụng → Noti Webhook → bật **Tự khởi chạy (Autostart)**.
+Mấy hãng này kill app chạy nền rất mạnh. Bấm Home để ra ngoài thì app vẫn chạy bình thường, nhưng **vuốt tắt app trong đa nhiệm sẽ dừng hẳn app**: thông báo tới sau đó không được gửi cho tới khi mở lại app. Đây là giới hạn của hệ điều hành, code không tự bật lại được. Cần làm thêm:
+- Cài đặt → Ứng dụng → Noti Webhook → bật **Tự khởi chạy (Autostart)**. Trên máy Xiaomi, app có sẵn nút **Mở Tự khởi chạy**.
 - Tiết kiệm pin → Noti Webhook → chọn **Không giới hạn**.
 - Mở màn hình đa nhiệm, kéo app xuống để **khoá (lock)** app, tránh bị dọn khi bấm "xoá tất cả".
 
@@ -92,13 +99,22 @@ Mấy hãng này kill app chạy nền rất mạnh, nên cần làm thêm:
 
 ## 5. Dữ liệu gửi lên webhook
 
-Mỗi thông báo gửi 1 request `POST`, header `Content-Type: application/json; charset=utf-8`:
+Mỗi sự kiện là 1 request `POST`, header `Content-Type: application/json; charset=utf-8`.
 
-Gửi **tất cả thông tin** Android cung cấp về thông báo (ví dụ rút gọn):
+- **Thông báo tin nhắn** (Zalo, Messenger, Teams, SMS…): **mỗi tin nhắn mới = 1 request riêng**, có `messageId` riêng. App nhắn tin đăng lại cả lịch sử hội thoại mỗi lần có tin mới, nhưng tin nào đã gửi rồi thì không gửi lại.
+- **Thông báo khác**: 1 request cho mỗi thông báo có nội dung mới.
+
+Mỗi request mang **tất cả thông tin** Android cung cấp về thông báo (ví dụ một tin nhắn, rút gọn):
 
 ```json
 {
   "event": "posted",
+  "eventId": "3f1c9a0e5b7d2c4e8a6f1b3d5c7e9a0b2d4f6e8a",
+  "messageId": "3f1c9a0e5b7d2c4e8a6f1b3d5c7e9a0b2d4f6e8a",
+  "isMessage": true,
+  "sender": "Nguyễn Văn A",
+  "messageTime": 1730700000000,
+  "historyCount": 3,
   "sentAt": 1730700000123,
   "packageName": "com.zing.zalo",
   "appName": "Zalo",
@@ -113,7 +129,6 @@ Gửi **tất cả thông tin** Android cung cấp về thông báo (ví dụ r�
   "conversationTitle": "",
   "isGroupConversation": false,
   "textLines": [],
-  "messages": [{ "text": "Tối nay đi ăn không?", "time": 1730700000000, "sender": "Nguyễn Văn A" }],
   "template": "android.app.Notification$MessagingStyle",
   "id": 1234,
   "tag": null,
@@ -147,10 +162,16 @@ Gửi **tất cả thông tin** Android cung cấp về thông báo (ví dụ r�
 
 | Trường | Ý nghĩa |
 |---|---|
+| `eventId` | **ID duy nhất của sự kiện.** Tin nhắn: bằng `messageId`. Thông báo khác: mã sinh từ app + nội dung chữ. Server lưu id này để chống trùng (ví dụ khi app thử gửi lại do lỗi mạng) |
+| `messageId` | ID của tin nhắn = SHA-1 của `app + người gửi + thời gian + nội dung`, nên cùng một tin luôn ra cùng id. `null` nếu không phải tin nhắn |
+| `isMessage` | `true` nếu request này là 1 tin nhắn |
+| `sender` / `messageTime` | Người gửi và thời điểm gửi tin nhắn (mili giây). `null` nếu không phải tin nhắn |
+| `text` | Nội dung: với tin nhắn là **đúng nội dung tin đó** |
+| `historyCount` | Số tin nhắn trong hội thoại mà thông báo đang hiển thị (để tham khảo) |
 | `packageName` / `appName` | App gửi thông báo, dùng để lọc (ví dụ chỉ lấy app ngân hàng) |
-| `title`, `text`, `bigText`, `subText`, `summaryText`, `infoText`, `tickerText` | Các phần chữ của thông báo. `bigText` là nội dung đầy đủ khi mở rộng (tin dài, biến động số dư…) |
+| `title`, `bigText`, `subText`, `summaryText`, `infoText`, `tickerText` | Các phần chữ khác của thông báo. `bigText` là nội dung đầy đủ khi mở rộng (tin dài, biến động số dư…) |
+| `conversationTitle` / `isGroupConversation` | Tên hội thoại / có phải nhóm chat không |
 | `textLines` | Các dòng của thông báo dạng hộp thư (Gmail gộp nhiều mail…) |
-| `messages` | Danh sách tin nhắn (Zalo, Messenger, SMS…), mỗi tin có `text`, `time`, `sender` |
 | `id`, `tag`, `key`, `groupKey` | Định danh thông báo trên hệ thống. `key` không đổi khi app cập nhật cùng một thông báo |
 | `postTime` / `when` | Thời điểm đăng / thời điểm app ghi trên thông báo (mili giây, Unix epoch) |
 | `isGroupSummary` | `true` nếu là thông báo tóm tắt của một nhóm (nội dung thường trùng các thông báo con) |
@@ -162,8 +183,12 @@ Gửi **tất cả thông tin** Android cung cấp về thông báo (ví dụ r�
 | `extras` | **Toàn bộ dữ liệu gốc** app gắn vào thông báo. Ảnh trong đây thay bằng chuỗi `[bitmap WxH]` / `[icon]` |
 
 **Cơ chế gửi**
-- **Mọi thông báo** đều gửi: kể cả thông báo nhóm, thông báo thường trực, thông báo không có chữ, và mỗi lần app cập nhật thông báo. Tự lọc ở phía webhook bằng các trường ở trên.
-- Chỉ bỏ: thông báo của chính app này, và bản đăng lại **giống hệt từng byte** trong vòng 2 giây.
+- **Mọi thông báo** đều được xét, kể cả thông báo nhóm, thông báo thường trực, thông báo không có chữ.
+- **Chống trùng:**
+  - Tin nhắn: mỗi `messageId` chỉ gửi **1 lần duy nhất**. App nhớ 3000 tin gần nhất, lưu xuống máy nên tắt app hay khởi động lại máy cũng không gửi lại.
+  - Thông báo khác: cùng app + cùng nội dung chữ trong vòng **5 phút** chỉ gửi 1 lần. Thanh tiến trình chạy hay cập nhật lặt vặt sẽ không bắn liên tục.
+  - Lần đầu cài bản này, những tin đang hiện trên thanh thông báo sẽ được gửi 1 lần (vì app chưa nhớ gì).
+- Không gửi thông báo của chính app này.
 - Lỗi mạng hoặc server trả 5xx/408/429: thử lại tối đa **3 lần** (chờ 1s, rồi 4s).
 - Server trả 4xx khác: không thử lại.
 - Webhook nên trả về HTTP **2xx** càng nhanh càng tốt. Timeout là 10s khi kết nối, 15s khi đọc.
@@ -178,7 +203,10 @@ Gửi **tất cả thông tin** Android cung cấp về thông báo (ví dụ r�
 | Sửa gì | File |
 |---|---|
 | Giao diện | `App.tsx` |
-| Bắt thông báo, lọc, nội dung JSON | `modules/noti-webhook/android/src/main/java/expo/modules/notiwebhook/NotiListener.kt` |
+| Bắt thông báo | `modules/noti-webhook/android/src/main/java/expo/modules/notiwebhook/NotiListener.kt` |
+| Nội dung JSON (các trường) | `modules/noti-webhook/android/src/main/java/expo/modules/notiwebhook/NotiSerializer.kt` |
+| Tách từng tin nhắn, chống trùng, `eventId`/`messageId` | `modules/noti-webhook/android/src/main/java/expo/modules/notiwebhook/Dedupe.kt` |
+| Tự kết nối lại sau khởi động máy / cập nhật app | `modules/noti-webhook/android/src/main/java/expo/modules/notiwebhook/BootReceiver.kt` |
 | Gửi HTTP, retry | `modules/noti-webhook/android/src/main/java/expo/modules/notiwebhook/WebhookSender.kt` |
 | Hàm gọi từ JS | `modules/noti-webhook/android/src/main/java/expo/modules/notiwebhook/NotiWebhookModule.kt` + `modules/noti-webhook/index.ts` |
 | Quyền, khai báo service | `modules/noti-webhook/android/src/main/AndroidManifest.xml` |
@@ -200,6 +228,8 @@ npx tsc --noEmit
 | `you can't create one... permissions granted during authentication` | Token thiếu quyền. Chạy lại `eas login` và cấp quyền, hoặc tạo personal access token mới. |
 | `eas login` bắt nhập mật khẩu nhưng không có | Dùng Cách B (token) ở mục 1. |
 | Build lỗi trên EAS | Mở link build, xem log ở bước bị lỗi (thường là *Run gradlew*), rồi gửi log để sửa. |
+| Lịch sử toàn chấm đỏ `HTTP 429` | Server webhook đang chặn vì quá nhiều request. URL miễn phí của webhook.site có giới hạn số request: tạo URL mới hoặc dùng server riêng. |
+| Vừa vuốt tắt app, mở lại thấy cảnh báo "Dịch vụ đọc thông báo đang chưa chạy" | App đang tự kết nối lại, thường chỉ mất vài giây. Nếu không hết thì tắt rồi bật lại quyền đọc thông báo. |
 | Gửi thử báo `Chưa cấu hình webhook URL` | Nhập URL rồi bấm **Lưu** trước. |
 | Gửi thử báo `UnknownHostException` / `ConnectException` | Điện thoại mất mạng, hoặc URL sai hay không truy cập được từ điện thoại. Nếu dùng IP LAN (`192.168.x.x`) thì điện thoại phải chung Wi-Fi với server. |
 | Gửi thử OK nhưng thông báo thật không gửi | Kiểm tra lại quyền đọc thông báo: vào app xem còn cảnh báo vàng không. Kiểm tra công tắc *"Đang chuyển tiếp thông báo"* có bật không. |

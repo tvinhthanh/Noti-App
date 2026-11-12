@@ -19,10 +19,10 @@ object WebhookSender {
     executor.execute { deliver(app, payload) }
   }
 
-  /** Builds the payload on the sender thread (keeps image encoding off the main thread); null skips. */
-  fun sendBuilt(ctx: Context, build: () -> JSONObject?) {
+  /** Builds payloads on the sender thread (keeps image encoding off the main thread); one POST each. */
+  fun sendBuilt(ctx: Context, build: () -> List<JSONObject>) {
     val app = ctx.applicationContext
-    executor.execute { build()?.let { deliver(app, it) } }
+    executor.execute { build().forEach { deliver(app, it) } }
   }
 
   /** Blocking send; returns (ok, result). Call off the main thread. */

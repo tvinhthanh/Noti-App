@@ -136,6 +136,49 @@ export default function App() {
               </View>
             )}
 
+            {status && status.permissionGranted && !status.listenerConnected && (
+              <View style={styles.warn}>
+                <Text style={styles.warnText}>
+                  Dịch vụ đọc thông báo đang chưa chạy (thường do app bị vuốt tắt).
+                  App đang tự kết nối lại; nếu cảnh báo này không mất sau vài giây,
+                  tắt rồi bật lại quyền đọc thông báo.
+                </Text>
+                <Button
+                  label="Mở quyền đọc thông báo"
+                  onPress={NotiWebhook.openPermissionSettings}
+                />
+              </View>
+            )}
+
+            {status &&
+              status.permissionGranted &&
+              status.isXiaomi &&
+              !status.autostartAck && (
+                <View style={styles.warn}>
+                  <Text style={styles.warnText}>
+                    Máy Xiaomi: vuốt tắt app trong đa nhiệm sẽ dừng hẳn việc
+                    chuyển tiếp. Bật "Tự khởi chạy" cho Noti Webhook, và khoá app
+                    trong đa nhiệm (kéo app xuống, chọn biểu tượng ổ khoá). Hệ
+                    thống không cho app biết anh đã bật chưa, nên bật xong hãy bấm
+                    "Đã bật rồi".
+                  </Text>
+                  <View style={styles.actions}>
+                    <Button
+                      label="Mở Tự khởi chạy"
+                      onPress={NotiWebhook.openAutostartSettings}
+                    />
+                    <Button
+                      label="Đã bật rồi"
+                      kind="ghost"
+                      onPress={() => {
+                        NotiWebhook.setAutostartAck(true);
+                        setStatus({...status, autostartAck: true});
+                      }}
+                    />
+                  </View>
+                </View>
+              )}
+
             <Text style={styles.label}>Webhook URL</Text>
             <TextInput
               value={url}

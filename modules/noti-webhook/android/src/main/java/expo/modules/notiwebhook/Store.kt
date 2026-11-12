@@ -10,6 +10,7 @@ object Store {
   private const val KEY_URL = "url"
   private const val KEY_ENABLED = "enabled"
   private const val KEY_LOGS = "logs"
+  private const val KEY_AUTOSTART_ACK = "autostart_ack"
   private const val MAX_LOGS = 100
 
   private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -19,6 +20,13 @@ object Store {
 
   fun save(ctx: Context, url: String, enabled: Boolean) {
     prefs(ctx).edit().putString(KEY_URL, url.trim()).putBoolean(KEY_ENABLED, enabled).apply()
+  }
+
+  /** User confirmed they enabled Xiaomi Autostart (the OS offers no way to read it). */
+  fun autostartAck(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_AUTOSTART_ACK, false)
+
+  fun setAutostartAck(ctx: Context, value: Boolean) {
+    prefs(ctx).edit().putBoolean(KEY_AUTOSTART_ACK, value).apply()
   }
 
   @Synchronized
