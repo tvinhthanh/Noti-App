@@ -1,8 +1,10 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   Alert,
   AppState,
   FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   StyleSheet,
   Switch,
@@ -52,6 +54,15 @@ export default function App() {
   const [enabled, setEnabled] = useState(true);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState(false);
+  const listRef = useRef<FlatList<LogEntry>>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [showTop, setShowTop] = useState(false);
+
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    setScrolled(y > 4);
+    setShowTop(y > 600);
+  };
 
   const refresh = useCallback(async (syncForm = false) => {
     const s = await NotiWebhook.getStatus();
@@ -103,21 +114,24 @@ export default function App() {
     <SafeAreaProvider>
     <SafeAreaView style={styles.root}>
       <StatusBar style="dark" />
+      {/* Fixed header: stays put while the list scrolls under it. */}
+      <View style={[styles.header, scrolled && styles.headerScrolled]}>
+        <Text style={styles.h1}>Noti → Webhook</Text>
+        {status && (
+          <Text style={styles.version}>
+            v{status.appVersion} · build {status.appVersionCode}
+          </Text>
+        )}
+      </View>
       <FlatList
+        ref={listRef}
         data={logs}
         keyExtractor={(item, i) => `${item.time}-${i}`}
         contentContainerStyle={styles.content}
+        onScroll={onScroll}
+        scrollEventThrottle={100}
         ListHeaderComponent={
           <View>
-            <View style={styles.header}>
-              <Text style={styles.h1}>Noti → Webhook</Text>
-              {status && (
-                <Text style={styles.version}>
-                  v{status.appVersion} · build {status.appVersionCode}
-                </Text>
-              )}
-            </View>
-
             {status && !status.permissionGranted && (
               <View style={styles.warn}>
                 <Text style={styles.warnText}>
@@ -257,6 +271,15 @@ export default function App() {
           </View>
         )}
       />
+      {showTop && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Lên đầu trang"
+          onPress={() => listRef.current?.scrollToOffset({offset: 0, animated: true})}
+          style={({pressed}) => [styles.toTop, pressed && {opacity: 0.7}]}>
+          <Text style={styles.toTopText}>↑</Text>
+        </Pressable>
+      )}
     </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -264,7 +287,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   root: {flex: 1, backgroundColor: '#f4f4f2'},
-  content: {padding: 16, paddingBottom: 40},
+  content: {paddingHorizontal: 16, paddingTop: 4, paddingBottom: 96},
   h1: {fontSize: 26, fontWeight: '700', color: '#1c1c1a'},
   h2: {fontSize: 17, fontWeight: '700', color: '#1c1c1a'},
   label: {fontSize: 13, color: '#5c5c57', marginBottom: 6},
@@ -331,7 +354,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: '#f4f4f2',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'transparent',
   },
+  headerScrolled: {borderBottomColor: '#d9d9d4'},
   version: {fontSize: 12, color: '#8a8a84'},
+  toTop: {
+    position: 'absolute',
+    right: 16,
+    bottom: 24,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#1c1c1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+  },
+  toTopText: {color: '#fff', fontSize: 22, fontWeight: '700', marginTop: -2},
 });
