@@ -94,38 +94,80 @@ Mấy hãng này kill app chạy nền rất mạnh, nên cần làm thêm:
 
 Mỗi thông báo gửi 1 request `POST`, header `Content-Type: application/json; charset=utf-8`:
 
+Gửi **tất cả thông tin** Android cung cấp về thông báo (ví dụ rút gọn):
+
 ```json
 {
+  "event": "posted",
+  "sentAt": 1730700000123,
   "packageName": "com.zing.zalo",
   "appName": "Zalo",
   "title": "Nguyễn Văn A",
+  "titleBig": "",
   "text": "Tối nay đi ăn không?",
   "bigText": "",
   "subText": "",
-  "category": "msg",
-  "postTime": 1730700000000,
+  "summaryText": "",
+  "infoText": "",
+  "tickerText": "",
+  "conversationTitle": "",
+  "isGroupConversation": false,
+  "textLines": [],
+  "messages": [{ "text": "Tối nay đi ăn không?", "time": 1730700000000, "sender": "Nguyễn Văn A" }],
+  "template": "android.app.Notification$MessagingStyle",
+  "id": 1234,
+  "tag": null,
   "key": "0|com.zing.zalo|1234|null|10123",
+  "groupKey": "0|com.zing.zalo|g:chat",
+  "group": "chat",
+  "sortKey": "",
+  "isGroupSummary": false,
+  "channelId": "message",
+  "category": "msg",
+  "userId": 0,
+  "postTime": 1730700000000,
+  "when": 1730700000000,
   "isOngoing": false,
-  "device": "samsung SM-S918B"
+  "isClearable": true,
+  "flags": 16,
+  "priority": 1,
+  "visibility": 0,
+  "number": 0,
+  "color": "#FF0068FF",
+  "progress": { "value": 0, "max": 0, "indeterminate": false },
+  "actions": [{ "title": "Trả lời", "hasReply": true }, { "title": "Đánh dấu đã đọc", "hasReply": false }],
+  "ranking": { "rank": 0, "isAmbient": false, "matchesInterruptionFilter": true, "importance": 4, "channelName": "Tin nhắn", "canShowBadge": true, "isConversation": true },
+  "largeIcon": "data:image/png;base64,iVBORw0KGgo...",
+  "picture": null,
+  "extras": { "android.title": "Nguyễn Văn A", "android.text": "Tối nay đi ăn không?", "...": "mọi extra gốc app gắn vào" },
+  "device": "Xiaomi 2506BPN68G",
+  "androidVersion": "16"
 }
 ```
 
 | Trường | Ý nghĩa |
 |---|---|
-| `packageName` | Mã app gửi thông báo, dùng để lọc (ví dụ chỉ lấy app ngân hàng) |
-| `appName` | Tên app hiển thị |
-| `title` / `text` | Tiêu đề và nội dung ngắn |
-| `bigText` | Nội dung đầy đủ khi thông báo dạng mở rộng (tin nhắn dài, biến động số dư…) |
-| `postTime` | Thời điểm thông báo, tính bằng mili giây (Unix epoch) |
-| `key` | ID của thông báo trên hệ thống |
-| `isOngoing` | `true` nếu là thông báo thường trực (nhạc, tải file…) |
+| `packageName` / `appName` | App gửi thông báo, dùng để lọc (ví dụ chỉ lấy app ngân hàng) |
+| `title`, `text`, `bigText`, `subText`, `summaryText`, `infoText`, `tickerText` | Các phần chữ của thông báo. `bigText` là nội dung đầy đủ khi mở rộng (tin dài, biến động số dư…) |
+| `textLines` | Các dòng của thông báo dạng hộp thư (Gmail gộp nhiều mail…) |
+| `messages` | Danh sách tin nhắn (Zalo, Messenger, SMS…), mỗi tin có `text`, `time`, `sender` |
+| `id`, `tag`, `key`, `groupKey` | Định danh thông báo trên hệ thống. `key` không đổi khi app cập nhật cùng một thông báo |
+| `postTime` / `when` | Thời điểm đăng / thời điểm app ghi trên thông báo (mili giây, Unix epoch) |
+| `isGroupSummary` | `true` nếu là thông báo tóm tắt của một nhóm (nội dung thường trùng các thông báo con) |
+| `isOngoing` | `true` nếu là thông báo thường trực (nhạc, tải file, định vị…) |
+| `progress` | Thanh tiến trình (tải file…) |
+| `actions` | Các nút trên thông báo; `hasReply` là có ô trả lời nhanh |
+| `ranking` | Mức ưu tiên hệ thống gán: `importance` 0–5, tên kênh thông báo… |
+| `largeIcon` / `picture` | Ảnh đại diện (≤128px, PNG) và ảnh lớn của thông báo (≤720px, JPEG) dạng data URI base64; `null` nếu không có |
+| `extras` | **Toàn bộ dữ liệu gốc** app gắn vào thông báo. Ảnh trong đây thay bằng chuỗi `[bitmap WxH]` / `[icon]` |
 
 **Cơ chế gửi**
+- **Mọi thông báo** đều gửi: kể cả thông báo nhóm, thông báo thường trực, thông báo không có chữ, và mỗi lần app cập nhật thông báo. Tự lọc ở phía webhook bằng các trường ở trên.
+- Chỉ bỏ: thông báo của chính app này, và bản đăng lại **giống hệt từng byte** trong vòng 2 giây.
 - Lỗi mạng hoặc server trả 5xx/408/429: thử lại tối đa **3 lần** (chờ 1s, rồi 4s).
 - Server trả 4xx khác: không thử lại.
-- Thông báo trùng hệt trong 10 giây bị bỏ qua (app hay đăng lại cùng thông báo khi cập nhật).
-- Không gửi: thông báo nhóm (group summary), thông báo không có nội dung, thông báo của chính app này.
 - Webhook nên trả về HTTP **2xx** càng nhanh càng tốt. Timeout là 10s khi kết nối, 15s khi đọc.
+- Mỗi request có thể nặng vài chục đến vài trăm KB nếu thông báo có ảnh. Server nhận nên cho phép body ≥ 2 MB.
 
 > Lưu ý: nội dung thông báo có thể chứa tin nhắn riêng, OTP, số dư tài khoản… Anh nên dùng URL `https://` và để webhook ở server do mình kiểm soát.
 

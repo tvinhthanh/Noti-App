@@ -19,6 +19,12 @@ object WebhookSender {
     executor.execute { deliver(app, payload) }
   }
 
+  /** Builds the payload on the sender thread (keeps image encoding off the main thread); null skips. */
+  fun sendBuilt(ctx: Context, build: () -> JSONObject?) {
+    val app = ctx.applicationContext
+    executor.execute { build()?.let { deliver(app, it) } }
+  }
+
   /** Blocking send; returns (ok, result). Call off the main thread. */
   fun deliver(ctx: Context, payload: JSONObject): Pair<Boolean, String> {
     val url = Store.url(ctx)
