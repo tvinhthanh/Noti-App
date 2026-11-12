@@ -14,8 +14,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.notiwebhook",
-      "versionCode": 1
+      "package": "com.notiwebhook"
     },
     "platforms": [
       "android"
